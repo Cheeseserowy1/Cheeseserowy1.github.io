@@ -1,144 +1,109 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <title>Snake - Smooth</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    canvas {
-      display: block;
-      background-color: #111;
-      margin: 0 auto;
-      border: 2px solid #0f0;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Snake</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+  }
+  canvas {
+    background: #222;
+    display: block;
+  }
+</style>
 </head>
 <body>
-  <canvas id="game"></canvas>
-  <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
+<canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
 
-    // Ustawienia gry
-    canvas.width = 600;
-    canvas.height = 600;
+canvas.width = 600;
+canvas.height = 400;
 
-    const snake = {
-      segments: [{ x: 300, y: 300 }],
-      direction: { x: 1, y: 0 },
-      speed: 100, // px per second
-      length: 5,
-    };
+let snake = [{x: 300, y: 200}];
+let direction = {x: 0, y: 0};
+let speed = 2; // pixels per frame
+let food = {x: Math.random()*canvas.width, y: Math.random()*canvas.height};
+let snakeLength = 100; // length in pixels
 
-    let food = spawnFood();
-    let lastTime = 0;
-    let gameOver = false;
-
-    function spawnFood() {
-      const margin = 20;
-      return {
-        x: Math.random() * (canvas.width - margin * 2) + margin,
-        y: Math.random() * (canvas.height - margin * 2) + margin,
-      };
+document.addEventListener('keydown', e => {
+    switch(e.key) {
+        case 'ArrowUp': if(direction.y === 0) direction = {x:0, y:-speed}; break;
+        case 'ArrowDown': if(direction.y === 0) direction = {x:0, y:speed}; break;
+        case 'ArrowLeft': if(direction.x === 0) direction = {x:-speed, y:0}; break;
+        case 'ArrowRight': if(direction.x === 0) direction = {x:speed, y:0}; break;
     }
+});
 
-    function update(dt) {
-      const head = { ...snake.segments[0] };
+function gameLoop() {
+    // update snake head
+    let head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y};
+    snake.unshift(head);
 
-      head.x += snake.direction.x * snake.speed * dt;
-      head.y += snake.direction.y * snake.speed * dt;
-
-      snake.segments.unshift(head);
-      while (snake.segments.length > snake.length) {
-        snake.segments.pop();
-      }
-
-      // Sprawdź kolizję z jedzeniem
-      if (distance(head, food) < 10) {
-        snake.length++;
-        food = spawnFood();
-      }
-
-      // Kolizja z samym sobą
-      for (let i = 4; i < snake.segments.length; i++) {
-        if (distance(head, snake.segments[i]) < 10) {
-          gameOver = true;
+    // limit snake length
+    let totalLength = 0;
+    for(let i=0; i<snake.length-1; i++){
+        let dx = snake[i+1].x - snake[i].x;
+        let dy = snake[i+1].y - snake[i].y;
+        totalLength += Math.sqrt(dx*dx + dy*dy);
+        if(totalLength > snakeLength){
+            snake = snake.slice(0, i+2);
+            break;
         }
-      }
-
-      // Kolizja ze ścianą
-      if (
-        head.x < 0 || head.x > canvas.width ||
-        head.y < 0 || head.y > canvas.height
-      ) {
-        gameOver = true;
-      }
     }
 
-    function distance(a, b) {
-      return Math.hypot(a.x - b.x, a.y - b.y);
+    // check food collision
+    let dx = head.x - food.x;
+    let dy = head.y - food.y;
+    if(Math.sqrt(dx*dx + dy*dy) < 10){
+        snakeLength += 20;
+        food = {x: Math.random()*canvas.width, y: Math.random()*canvas.height};
     }
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Jedzenie
-      ctx.fillStyle = "red";
-      ctx.beginPath();
-      ctx.arc(food.x, food.y, 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Wąż
-      ctx.strokeStyle = "#0f0";
-      ctx.lineWidth = 10;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      for (let i = 0; i < snake.segments.length - 1; i++) {
-        const p1 = snake.segments[i];
-        const p2 = snake.segments[i + 1];
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-      }
-      ctx.stroke();
-
-      // Game over
-      if (gameOver) {
-        ctx.fillStyle = "white";
-        ctx.font = "40px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
-      }
+    // check collision with self
+    for(let i=1; i<snake.length; i++){
+        if(Math.abs(head.x - snake[i].x) < 1 && Math.abs(head.y - snake[i].y) < 1){
+            // reset game
+            snake = [{x: 300, y: 200}];
+            direction = {x:0, y:0};
+            snakeLength = 100;
+        }
     }
 
-    function loop(timestamp) {
-      if (!lastTime) lastTime = timestamp;
-      const dt = (timestamp - lastTime) / 1000;
-      lastTime = timestamp;
+    // clear canvas
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      if (!gameOver) update(dt);
-      draw();
+    // draw food
+    ctx.fillStyle = 'red';
+    ctx.beginPath();
+    ctx.arc(food.x, food.y, 8, 0, Math.PI*2);
+    ctx.fill();
 
-      requestAnimationFrame(loop);
+    // draw snake
+    ctx.strokeStyle = 'lime';
+    ctx.lineWidth = 10;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(snake[0].x, snake[0].y);
+    for(let i=1; i<snake.length; i++){
+        ctx.lineTo(snake[i].x, snake[i].y);
     }
+    ctx.stroke();
 
-    // Sterowanie
-    window.addEventListener("keydown", (e) => {
-      const d = snake.direction;
-      if ((e.key === "ArrowUp" || e.key === "w") && d.y === 0) {
-        snake.direction = { x: 0, y: -1 };
-      }
-      if ((e.key === "ArrowDown" || e.key === "s") && d.y === 0) {
-        snake.direction = { x: 0, y: 1 };
-      }
-      if ((e.key === "ArrowLeft" || e.key === "a") && d.x === 0) {
-        snake.direction = { x: -1, y: 0 };
-      }
-      if ((e.key === "ArrowRight" || e.key === "d") && d.x === 0) {
-        snake.direction = { x: 1, y: 0 };
-      }
-    });
+    requestAnimationFrame(gameLoop);
+}
 
-    requestAnimationFrame(loop);
-  </script>
+gameLoop();
+</script>
 </body>
 </html>
