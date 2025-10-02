@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Snake - Smooth</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    canvas {
+      display: block;
+      background-color: #111;
+      margin: 0 auto;
+      border: 2px solid #0f0;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    // Ustawienia gry
+    canvas.width = 600;
+    canvas.height = 600;
+
+    const snake = {
+      segments: [{ x: 300, y: 300 }],
+      direction: { x: 1, y: 0 },
+      speed: 100, // px per second
+      length: 5,
+    };
+
+    let food = spawnFood();
+    let lastTime = 0;
+    let gameOver = false;
+
+    function spawnFood() {
+      const margin = 20;
+      return {
+        x: Math.random() * (canvas.width - margin * 2) + margin,
+        y: Math.random() * (canvas.height - margin * 2) + margin,
+      };
+    }
+
+    function update(dt) {
+      const head = { ...snake.segments[0] };
+
+      head.x += snake.direction.x * snake.speed * dt;
+      head.y += snake.direction.y * snake.speed * dt;
+
+      snake.segments.unshift(head);
+      while (snake.segments.length > snake.length) {
+        snake.segments.pop();
+      }
+
+      // Sprawdź kolizję z jedzeniem
+      if (distance(head, food) < 10) {
+        snake.length++;
+        food = spawnFood();
+      }
+
+      // Kolizja z samym sobą
+      for (let i = 4; i < snake.segments.length; i++) {
+        if (distance(head, snake.segments[i]) < 10) {
+          gameOver = true;
+        }
+      }
+
+      // Kolizja ze ścianą
+      if (
+        head.x < 0 || head.x > canvas.width ||
+        head.y < 0 || head.y > canvas.height
+      ) {
+        gameOver = true;
+      }
+    }
+
+    function distance(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Jedzenie
+      ctx.fillStyle = "red";
+      ctx.beginPath();
+      ctx.arc(food.x, food.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Wąż
+      ctx.strokeStyle = "#0f0";
+      ctx.lineWidth = 10;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      for (let i = 0; i < snake.segments.length - 1; i++) {
+        const p1 = snake.segments[i];
+        const p2 = snake.segments[i + 1];
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+      }
+      ctx.stroke();
+
+      // Game over
+      if (gameOver) {
+        ctx.fillStyle = "white";
+        ctx.font = "40px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
+      }
+    }
+
+    function loop(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      const dt = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
+      if (!gameOver) update(dt);
+      draw();
+
+      requestAnimationFrame(loop);
+    }
+
+    // Sterowanie
+    window.addEventListener("keydown", (e) => {
+      const d = snake.direction;
+      if ((e.key === "ArrowUp" || e.key === "w") && d.y === 0) {
+        snake.direction = { x: 0, y: -1 };
+      }
+      if ((e.key === "ArrowDown" || e.key === "s") && d.y === 0) {
+        snake.direction = { x: 0, y: 1 };
+      }
+      if ((e.key === "ArrowLeft" || e.key === "a") && d.x === 0) {
+        snake.direction = { x: -1, y: 0 };
+      }
+      if ((e.key === "ArrowRight" || e.key === "d") && d.x === 0) {
+        snake.direction = { x: 1, y: 0 };
+      }
+    });
+
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
